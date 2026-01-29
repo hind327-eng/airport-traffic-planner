@@ -1,82 +1,97 @@
-// api/schedule.js
+let trafficChart = null;
 
-const cache = new Map();
-
-export default async function handler(req, res) {
-  const { airport } = req.query;
+// ========================
+// SEARCH HANDLER
+// ========================
+async function searchAirport() {
+  const input = document.getElementById("airportInput");
+  const airport = input.value.trim().toUpperCase();
+  input.value = airport; // force uppercase visually
 
   if (!airport) {
-    return res.status(400).json({ error: "Missing airport code" });
-  }
-
-  const airportCode = airport.toUpperCase();
-  const today = new Date().toISOString().split("T")[0];
-  const cacheKey = `${airportCode}-${today}`;
-
-  // ✅ One request per airport per day
-  if (cache.has(cacheKey)) {
-    return res.json({
-      source: "cache",
-      lastUpdated: cache.get(cacheKey).lastUpdated,
-      data: cache.get(cacheKey).data
-    });
-  }
-
-  const API_KEY = process.env.AVIATIONSTACK_KEY;
-
-  if (!API_KEY) {
-    return res.status(500).json({ error: "API key not configured" });
+    alert("Enter an airport code (e.g. KLAX)");
+    return;
   }
 
   try {
-    // Fetch scheduled departures + arrivals
-    const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&dep_iata=${airportCode}&flight_status=scheduled`;
+    const res = await fetch(`/api/schedule?airport=${airport}`);
+    const json = await res.json();
 
-    const response = await fetch(url);
-    const json = await response.json();
-
-    if (!json.data) {
-      return res.status(500).json({ error: "Invalid API response" });
+    if (json.error) {
+      alert(json.error);
+      return;
     }
 
-    // Bucket flights by hour
-    const buckets = {};
+    document.getElementById("lastUpdated").innerText =
+      `Last updated: ${json.lastUpdated} (${json.source || "api"})`;
 
-    json.data.forEach(flight => {
-      const time =
-        flight.departure?.scheduled ||
-        flight.arrival?.scheduled;
-
-      if (!time) return;
-
-      const hour = new Date(time).getHours();
-      const hourKey = `${hour}:00`;
-
-      if (!buckets[hourKey]) {
-        buckets[hourKey] = 0;
-      }
-
-      buckets[hourKey]++;
-    });
-
-    const formatted = Object.keys(buckets)
-      .sort((a, b) => parseInt(a) - parseInt(b))
-      .map(hour => ({
-        hour,
-        pph: buckets[hour]
-      }));
-
-    const result = {
-      lastUpdated: new Date().toLocaleString(),
-      data: formatted
-    };
-
-    cache.set(cacheKey, result);
-
-    return res.json(result);
+    renderChart(json.data);
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    alert("Failed to load airport data");
   }
 }
 
+// ========================
+// CHART RENDER
+// ========================
+function renderChart(data) {
+  const ctx = document.getElementById("trafficChart").getContext("2d");
+
+  const labels = data.map(d => d.hour);
+  const values = data.map(d => d.pph);
+
+  if (trafficChart) {
+    trafficChart.data.labels = labels;
+    trafficChart.data.datasets[0].data = values;
+    trafficChart.update();
+    return;
+  }
+
+  trafficChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Projected Flights Per Hour",
+          data: values,
+          borderColor: "#4ade80",
+          backgroundColor: "rgba(74, 222, 128, 0.15)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Flights per Hour"
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: "Hour of Day (Local)"
+          }
+        }
+      }
+    }
+  });
+}
+
+// ========================
+// BUTTON BINDING
+// ========================
+document
+  .getElementById("searchBtn")
+  .addEventListener("click", searchAirport);
