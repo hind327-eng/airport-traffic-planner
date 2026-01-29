@@ -1,0 +1,56 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #f8fafc;
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.controls input,
+.controls select,
+.controls button {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+#airportInfo {
+  text-align: center;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+canvas {
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.updated {
+  text-align: center;
+  font-size: 12px;
+  color: #333;
+  margin-top: 6px;
+}
+
+.note {
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+  margin-top: 10px;
+}
+
+#airportInput {
+  text-transform: uppercase;
+}
