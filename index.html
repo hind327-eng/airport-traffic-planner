@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Airport Traffic Planner</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <h1>Airport Traffic Planner</h1>
+
+  <div class="controls">
+    <input id="airportInput" placeholder="Airport code (e.g. KTPA)" />
+    <select id="daySelect"></select>
+    <button onclick="loadSchedule()">Load Schedule</button>
+  </div>
+
+  <div id="airportInfo"></div>
+
+  <canvas id="trafficChart"></canvas>
+
+  <div id="lastUpdated" class="updated"></div>
+
+  <p class="note">
+    Projected traffic based on scheduled flights. Subject to airline changes.
+  </p>
+
+  <script src="app.js"></script>
+</body>
+</html>
