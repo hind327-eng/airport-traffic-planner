@@ -1,97 +1,51 @@
-let trafficChart = null;
-
-// ========================
-// SEARCH HANDLER
-// ========================
-async function searchAirport() {
-  const input = document.getElementById("airportInput");
-  const airport = input.value.trim().toUpperCase();
-  input.value = airport; // force uppercase visually
-
-  if (!airport) {
-    alert("Enter an airport code (e.g. KLAX)");
-    return;
-  }
-
+export default async function handler(req, res) {
   try {
-    const res = await fetch(`/api/schedule?airport=${airport}`);
-    const json = await res.json();
+    const { airport, date } = req.query;
 
-    if (json.error) {
-      alert(json.error);
-      return;
+    if (!airport || !date) {
+      return res.status(400).json({
+        error: "Missing airport or date parameter"
+      });
     }
 
-    document.getElementById("lastUpdated").innerText =
-      `Last updated: ${json.lastUpdated} (${json.source || "api"})`;
+    const API_KEY = process.env.AVIATIONSTACK_KEY;
 
-    renderChart(json.data);
+    if (!API_KEY) {
+      return res.status(500).json({
+        error: "AVIATIONSTACK_KEY is not defined in environment"
+      });
+    }
+
+    const url =
+      `http://api.aviationstack.com/v1/flights` +
+      `?access_key=${API_KEY}` +
+      `&dep_iata=${airport}` +
+      `&flight_date=${date}` +
+      `&limit=100`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(500).json({
+        error: "Aviationstack request failed",
+        details: text
+      });
+    }
+
+    const data = await response.json();
+
+    return res.status(200).json({
+      airport,
+      date,
+      count: Array.isArray(data.data) ? data.data.length : 0,
+      data: data.data || []
+    });
 
   } catch (err) {
-    console.error(err);
-    alert("Failed to load airport data");
+    return res.status(500).json({
+      error: "Serverless function crashed",
+      message: err.message
+    });
   }
 }
-
-// ========================
-// CHART RENDER
-// ========================
-function renderChart(data) {
-  const ctx = document.getElementById("trafficChart").getContext("2d");
-
-  const labels = data.map(d => d.hour);
-  const values = data.map(d => d.pph);
-
-  if (trafficChart) {
-    trafficChart.data.labels = labels;
-    trafficChart.data.datasets[0].data = values;
-    trafficChart.update();
-    return;
-  }
-
-  trafficChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Projected Flights Per Hour",
-          data: values,
-          borderColor: "#4ade80",
-          backgroundColor: "rgba(74, 222, 128, 0.15)",
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: "Flights per Hour"
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: "Hour of Day (Local)"
-          }
-        }
-      }
-    }
-  });
-}
-
-// ========================
-// BUTTON BINDING
-// ========================
-document
-  .getElementById("searchBtn")
-  .addEventListener("click", searchAirport);
