@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
     if (!API_KEY) {
       return res.status(500).json({
-        error: "AVIATIONSTACK_KEY is not defined in environment"
+        error: "AVIATIONSTACK_KEY is not defined"
       });
     }
 
@@ -24,22 +24,13 @@ export default async function handler(req, res) {
       `&limit=100`;
 
     const response = await fetch(url);
-
-    if (!response.ok) {
-      const text = await response.text();
-      return res.status(500).json({
-        error: "Aviationstack request failed",
-        details: text
-      });
-    }
-
     const data = await response.json();
 
     return res.status(200).json({
       airport,
       date,
-      count: Array.isArray(data.data) ? data.data.length : 0,
-      data: data.data || []
+      raw_count: Array.isArray(data.data) ? data.data.length : 0,
+      flights: data.data || []
     });
 
   } catch (err) {
